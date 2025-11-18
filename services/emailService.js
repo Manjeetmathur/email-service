@@ -28,8 +28,19 @@ const createTransporter = () => {
  * @returns {Promise<Object>} - Result object with success status and message/info
  */
 export const sendEmail = async (options) => {
+  const emailId = `email-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const startTime = Date.now()
+  const timestamp = new Date().toISOString()
+  
+  console.log(`[${timestamp}] [${emailId}] ========== EMAIL SERVICE STARTED ==========`)
+  console.log(`[${timestamp}] [${emailId}] Recipient: ${options.to}`)
+  console.log(`[${timestamp}] [${emailId}] Subject: ${options.subject}`)
+  
   try {
     // Validate required fields
+    const validationStart = Date.now()
+    console.log(`[${new Date().toISOString()}] [${emailId}] Starting validation...`)
+    
     if (!options.to) {
       throw new Error('Recipient email address (to) is required')
     }
@@ -40,12 +51,20 @@ export const sendEmail = async (options) => {
       throw new Error('Email content (text or html) is required')
     }
 
+    const validationTime = Date.now() - validationStart
+    console.log(`[${new Date().toISOString()}] [${emailId}] Validation passed (${validationTime}ms)`)
+
     // Check if SMTP credentials are configured
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      throw new Error('SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS in .env file')
+      console.warn(`[${new Date().toISOString()}] [${emailId}] WARNING: SMTP credentials not in env, using hardcoded values`)
     }
 
+    // Create transporter
+    const transporterStart = Date.now()
+    console.log(`[${new Date().toISOString()}] [${emailId}] Creating SMTP transporter...`)
     const transporter = createTransporter()
+    const transporterTime = Date.now() - transporterStart
+    console.log(`[${new Date().toISOString()}] [${emailId}] Transporter created (${transporterTime}ms)`)
 
     // Prepare mail options
     const mailOptions = {
@@ -59,8 +78,32 @@ export const sendEmail = async (options) => {
       attachments: options.attachments
     }
 
+    console.log(`[${new Date().toISOString()}] [${emailId}] Mail options prepared:`)
+    console.log(`[${new Date().toISOString()}] [${emailId}]   From: ${mailOptions.from}`)
+    console.log(`[${new Date().toISOString()}] [${emailId}]   To: ${mailOptions.to}`)
+    console.log(`[${new Date().toISOString()}] [${emailId}]   Subject: ${mailOptions.subject}`)
+    console.log(`[${new Date().toISOString()}] [${emailId}]   Has text: ${!!mailOptions.text}`)
+    console.log(`[${new Date().toISOString()}] [${emailId}]   Has HTML: ${!!mailOptions.html}`)
+    console.log(`[${new Date().toISOString()}] [${emailId}]   CC: ${mailOptions.cc || 'none'}`)
+    console.log(`[${new Date().toISOString()}] [${emailId}]   BCC: ${mailOptions.bcc || 'none'}`)
+    console.log(`[${new Date().toISOString()}] [${emailId}]   Attachments: ${mailOptions.attachments?.length || 0}`)
+
     // Send mail
+    const sendStart = Date.now()
+    console.log(`[${new Date().toISOString()}] [${emailId}] Attempting to send email via SMTP...`)
+    console.log(`[${new Date().toISOString()}] [${emailId}] This may take 5-30 seconds depending on network latency...`)
+    
     const info = await transporter.sendMail(mailOptions)
+    
+    const sendDuration = Date.now() - sendStart
+    const totalDuration = Date.now() - startTime
+    
+    console.log(`[${new Date().toISOString()}] [${emailId}] ✅ Email sent successfully!`)
+    console.log(`[${new Date().toISOString()}] [${emailId}] SMTP send duration: ${sendDuration}ms`)
+    console.log(`[${new Date().toISOString()}] [${emailId}] Total service duration: ${totalDuration}ms`)
+    console.log(`[${new Date().toISOString()}] [${emailId}] Message ID: ${info.messageId}`)
+    console.log(`[${new Date().toISOString()}] [${emailId}] SMTP Response: ${info.response}`)
+    console.log(`[${new Date().toISOString()}] [${emailId}] ========== EMAIL SERVICE SUCCESS ==========`)
 
     return {
       success: true,
@@ -69,6 +112,27 @@ export const sendEmail = async (options) => {
       response: info.response
     }
   } catch (error) {
+    const totalDuration = Date.now() - startTime
+    console.error(`[${new Date().toISOString()}] [${emailId}] ❌ EMAIL SERVICE FAILED`)
+    console.error(`[${new Date().toISOString()}] [${emailId}] Error after ${totalDuration}ms`)
+    console.error(`[${new Date().toISOString()}] [${emailId}] Error type: ${error.constructor.name}`)
+    console.error(`[${new Date().toISOString()}] [${emailId}] Error message: ${error.message}`)
+    console.error(`[${new Date().toISOString()}] [${emailId}] Error code: ${error.code || 'N/A'}`)
+    console.error(`[${new Date().toISOString()}] [${emailId}] Error stack:`, error.stack)
+    
+    // Log specific SMTP errors
+    if (error.code) {
+      console.error(`[${new Date().toISOString()}] [${emailId}] SMTP Error Code: ${error.code}`)
+    }
+    if (error.command) {
+      console.error(`[${new Date().toISOString()}] [${emailId}] Failed SMTP Command: ${error.command}`)
+    }
+    if (error.response) {
+      console.error(`[${new Date().toISOString()}] [${emailId}] SMTP Response: ${error.response}`)
+    }
+    
+    console.error(`[${new Date().toISOString()}] [${emailId}] ========== EMAIL SERVICE FAILED ==========`)
+    
     return {
       success: false,
       message: error.message || 'Failed to send email',
@@ -82,22 +146,62 @@ export const sendEmail = async (options) => {
  * @returns {Promise<Object>} - Verification result
  */
 export const verifyConnection = async () => {
+  const verifyId = `verify-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const startTime = Date.now()
+  const timestamp = new Date().toISOString()
+  
+  console.log(`[${timestamp}] [${verifyId}] ========== SMTP VERIFY SERVICE STARTED ==========`)
+  
   try {
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      return {
-        success: false,
-        message: 'SMTP credentials not configured'
-      }
+      console.warn(`[${new Date().toISOString()}] [${verifyId}] WARNING: SMTP credentials not in env, using hardcoded values`)
     }
 
+    const transporterStart = Date.now()
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Creating SMTP transporter...`)
     const transporter = createTransporter()
+    const transporterTime = Date.now() - transporterStart
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Transporter created (${transporterTime}ms)`)
+    
+    const verifyStart = Date.now()
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Attempting SMTP connection verification...`)
+    console.log(`[${new Date().toISOString()}] [${verifyId}] This may take 5-15 seconds...`)
+    
     await transporter.verify()
+    
+    const verifyDuration = Date.now() - verifyStart
+    const totalDuration = Date.now() - startTime
+    
+    console.log(`[${new Date().toISOString()}] [${verifyId}] ✅ SMTP connection verified successfully!`)
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Verify duration: ${verifyDuration}ms`)
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Total duration: ${totalDuration}ms`)
+    console.log(`[${new Date().toISOString()}] [${verifyId}] ========== SMTP VERIFY SUCCESS ==========`)
 
     return {
       success: true,
       message: 'SMTP connection verified successfully'
     }
   } catch (error) {
+    const totalDuration = Date.now() - startTime
+    console.error(`[${new Date().toISOString()}] [${verifyId}] ❌ SMTP VERIFY FAILED`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error after ${totalDuration}ms`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error type: ${error.constructor.name}`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error message: ${error.message}`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error code: ${error.code || 'N/A'}`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error stack:`, error.stack)
+    
+    if (error.code) {
+      console.error(`[${new Date().toISOString()}] [${verifyId}] SMTP Error Code: ${error.code}`)
+    }
+    if (error.command) {
+      console.error(`[${new Date().toISOString()}] [${verifyId}] Failed SMTP Command: ${error.command}`)
+    }
+    if (error.response) {
+      console.error(`[${new Date().toISOString()}] [${verifyId}] SMTP Response: ${error.response}`)
+    }
+    
+    console.error(`[${new Date().toISOString()}] [${verifyId}] ========== SMTP VERIFY FAILED ==========`)
+    
     return {
       success: false,
       message: 'SMTP connection verification failed',

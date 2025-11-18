@@ -9,6 +9,24 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 3000
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const startTime = Date.now()
+  const timestamp = new Date().toISOString()
+  
+  console.log(`[${timestamp}] ${req.method} ${req.path} - Request started`)
+  console.log(`[${timestamp}] Headers:`, JSON.stringify(req.headers, null, 2))
+  
+  // Log response when it finishes
+  res.on('finish', () => {
+    const duration = Date.now() - startTime
+    const timestampEnd = new Date().toISOString()
+    console.log(`[${timestampEnd}] ${req.method} ${req.path} - Response sent (${duration}ms) - Status: ${res.statusCode}`)
+  })
+  
+  next()
+})
+
 // Middleware
 app.use(cors()) // Enable CORS for all routes
 app.use(express.json()) // Parse JSON request bodies
@@ -65,10 +83,15 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`)
-  console.log(`Email API endpoints:`)
-  console.log(`  POST http://localhost:${PORT}/api/email/send`)
-  console.log(`  GET  http://localhost:${PORT}/api/email/verify`)
-  console.log(`  GET  http://localhost:${PORT}/api/email/health`)
+  const timestamp = new Date().toISOString()
+  console.log(`\n${'='.repeat(60)}`)
+  console.log(`[${timestamp}] 🚀 SERVER STARTED`)
+  console.log(`[${timestamp}] Server is running on http://localhost:${PORT}`)
+  console.log(`[${timestamp}] Environment: ${process.env.NODE_ENV || 'development'}`)
+  console.log(`[${timestamp}] Email API endpoints:`)
+  console.log(`[${timestamp}]   POST http://localhost:${PORT}/api/email/send`)
+  console.log(`[${timestamp}]   GET  http://localhost:${PORT}/api/email/verify`)
+  console.log(`[${timestamp}]   GET  http://localhost:${PORT}/api/email/health`)
+  console.log(`${'='.repeat(60)}\n`)
 })
 
