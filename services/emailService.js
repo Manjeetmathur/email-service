@@ -5,11 +5,23 @@ dotenv.config()
 
 // Create reusable transporter object using SMTP transport
 const createTransporter = () => {
+  // Use explicit SMTP configuration instead of 'service: gmail' for better timeout control
   return nodemailer.createTransport({
-    service: 'gmail', // true for 465, false for other ports
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
       user: 'manjeetkumar62054@gmail.com',
       pass: 'fazu jmlj iyqa mrki'
+    },
+    // CRITICAL: Timeout settings to prevent 120s default timeout
+    connectionTimeout: 15000, // 15 seconds - time to establish TCP connection
+    greetingTimeout: 15000, // 15 seconds - time to receive greeting from server
+    socketTimeout: 15000, // 15 seconds - time to wait for socket operations
+    // Additional settings for better reliability
+    requireTLS: true, // Force TLS
+    tls: {
+      rejectUnauthorized: false // Accept self-signed certificates (if needed)
     }
   })
 }
@@ -62,6 +74,8 @@ export const sendEmail = async (options) => {
     // Create transporter
     const transporterStart = Date.now()
     console.log(`[${new Date().toISOString()}] [${emailId}] Creating SMTP transporter...`)
+    console.log(`[${new Date().toISOString()}] [${emailId}] SMTP Config: host=smtp.gmail.com, port=587, secure=false`)
+    console.log(`[${new Date().toISOString()}] [${emailId}] Timeouts: connection=15s, greeting=15s, socket=15s`)
     const transporter = createTransporter()
     const transporterTime = Date.now() - transporterStart
     console.log(`[${new Date().toISOString()}] [${emailId}] Transporter created (${transporterTime}ms)`)
@@ -88,12 +102,20 @@ export const sendEmail = async (options) => {
     console.log(`[${new Date().toISOString()}] [${emailId}]   BCC: ${mailOptions.bcc || 'none'}`)
     console.log(`[${new Date().toISOString()}] [${emailId}]   Attachments: ${mailOptions.attachments?.length || 0}`)
 
-    // Send mail
+    // Send mail with timeout wrapper
     const sendStart = Date.now()
     console.log(`[${new Date().toISOString()}] [${emailId}] Attempting to send email via SMTP...`)
-    console.log(`[${new Date().toISOString()}] [${emailId}] This may take 5-30 seconds depending on network latency...`)
+    console.log(`[${new Date().toISOString()}] [${emailId}] Connection timeout set to 15 seconds...`)
     
-    const info = await transporter.sendMail(mailOptions)
+    // Wrap sendMail in a timeout promise to fail faster than default 120s
+    const sendMailPromise = transporter.sendMail(mailOptions)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('SMTP connection timeout: Unable to connect to Gmail SMTP server within 20 seconds. This may be due to network restrictions or Gmail blocking the connection.'))
+      }, 20000) // 20 seconds total timeout
+    })
+    
+    const info = await Promise.race([sendMailPromise, timeoutPromise])
     
     const sendDuration = Date.now() - sendStart
     const totalDuration = Date.now() - startTime
@@ -165,9 +187,17 @@ export const verifyConnection = async () => {
     
     const verifyStart = Date.now()
     console.log(`[${new Date().toISOString()}] [${verifyId}] Attempting SMTP connection verification...`)
-    console.log(`[${new Date().toISOString()}] [${verifyId}] This may take 5-15 seconds...`)
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Connection timeout set to 15 seconds...`)
     
-    await transporter.verify()
+    // Wrap verify in a timeout promise to fail faster than default 120s
+    const verifyPromise = transporter.verify()
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('SMTP verification timeout: Unable to connect to Gmail SMTP server within 20 seconds. This may be due to network restrictions or Gmail blocking the connection.'))
+      }, 20000) // 20 seconds total timeout
+    })
+    
+    await Promise.race([verifyPromise, timeoutPromise])
     
     const verifyDuration = Date.now() - verifyStart
     const totalDuration = Date.now() - startTime
