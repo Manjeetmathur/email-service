@@ -49,7 +49,7 @@ export const sendEmail = async (options) => {
 
     // Prepare mail options
     const mailOptions = {
-      from: options.from || process.env.SMTP_USER,
+      from: 'manjeetkumar62054@gmail.com',
       to: options.to,
       subject: options.subject,
       text: options.text,
