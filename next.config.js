@@ -5,6 +5,12 @@ const nextConfig = {
     fetches: {
       fullUrl: true
     }
+  },
+  // Ensure proper handling of serverless functions
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb'
+    }
   }
 }
 

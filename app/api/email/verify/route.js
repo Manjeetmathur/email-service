@@ -1,4 +1,4 @@
-import { verifyConnection } from '@/services/emailService'
+import { verifyConnection } from '../../../../services/emailService'
 import { NextResponse } from 'next/server'
 
 /**

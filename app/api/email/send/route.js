@@ -1,4 +1,4 @@
-import { sendEmail } from '@/services/emailService'
+import { sendEmail } from '../../../../services/emailService'
 import { NextResponse } from 'next/server'
 
 /**
@@ -14,7 +14,18 @@ export async function POST(request) {
   console.log(`[${timestamp}] [${requestId}] ========== EMAIL SEND REQUEST STARTED ==========`)
   
   try {
-    const body = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (jsonError) {
+      console.error(`[${new Date().toISOString()}] [${requestId}] JSON parsing error:`, jsonError)
+      return NextResponse.json({
+        success: false,
+        message: 'Invalid JSON format in request body',
+        error: 'Please check your JSON syntax. Common issues: trailing commas, unquoted keys, or invalid characters.',
+        details: jsonError.message
+      }, { status: 400 })
+    }
     
     console.log(`[${timestamp}] [${requestId}] Request Body:`, JSON.stringify({
       to: body.to,
