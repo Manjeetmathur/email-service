@@ -1,7 +1,4 @@
 import nodemailer from 'nodemailer'
-import dotenv from 'dotenv'
-
-dotenv.config()
 
 // Create reusable transporter object
 const createTransporter = () => {
@@ -136,6 +133,74 @@ export const sendEmail = async (options) => {
       success: false,
       message: error.message || 'Failed to send email',
       error: error.toString()
+    }
+  }
+}
+
+/**
+ * Verify email connection
+ * @returns {Promise<Object>} - Verification result
+ */
+export const verifyConnection = async () => {
+  const verifyId = `verify-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const startTime = Date.now()
+  const timestamp = new Date().toISOString()
+  
+  console.log(`[${timestamp}] [${verifyId}] ========== EMAIL VERIFY SERVICE STARTED ==========`)
+  
+  try {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.warn(`[${new Date().toISOString()}] [${verifyId}] WARNING: Email credentials not in env, using hardcoded values`)
+    }
+
+    const transporterStart = Date.now()
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Creating transporter...`)
+    const transporter = createTransporter()
+    const transporterTime = Date.now() - transporterStart
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Transporter created (${transporterTime}ms)`)
+    
+    const verifyStart = Date.now()
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Attempting connection verification...`)
+    
+    await transporter.verify()
+    
+    const verifyDuration = Date.now() - verifyStart
+    const totalDuration = Date.now() - startTime
+    
+    console.log(`[${new Date().toISOString()}] [${verifyId}] ✅ Email connection verified successfully!`)
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Verify duration: ${verifyDuration}ms`)
+    console.log(`[${new Date().toISOString()}] [${verifyId}] Total duration: ${totalDuration}ms`)
+    console.log(`[${new Date().toISOString()}] [${verifyId}] ========== EMAIL VERIFY SUCCESS ==========`)
+
+    return {
+      success: true,
+      message: 'Email connection verified successfully'
+    }
+  } catch (error) {
+    const totalDuration = Date.now() - startTime
+    console.error(`[${new Date().toISOString()}] [${verifyId}] ❌ EMAIL VERIFY FAILED`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error after ${totalDuration}ms`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error type: ${error.constructor.name}`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error message: ${error.message}`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error code: ${error.code || 'N/A'}`)
+    console.error(`[${new Date().toISOString()}] [${verifyId}] Error stack:`, error.stack)
+    
+    if (error.code) {
+      console.error(`[${new Date().toISOString()}] [${verifyId}] Error Code: ${error.code}`)
+    }
+    if (error.command) {
+      console.error(`[${new Date().toISOString()}] [${verifyId}] Failed Command: ${error.command}`)
+    }
+    if (error.response) {
+      console.error(`[${new Date().toISOString()}] [${verifyId}] Response: ${error.response}`)
+    }
+    
+    console.error(`[${new Date().toISOString()}] [${verifyId}] ========== EMAIL VERIFY FAILED ==========`)
+    
+    return {
+      success: false,
+      message: 'Email connection verification failed',
+      error: error.message
     }
   }
 }
