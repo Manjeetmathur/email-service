@@ -1,4 +1,4 @@
-import { sendEmail } from '../../../../services/emailService'
+import { sendEmail } from '@/lib/emailService'
 import { NextResponse } from 'next/server'
 
 /**
